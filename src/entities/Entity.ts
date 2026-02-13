@@ -1,4 +1,4 @@
-import { Position, Velocity, Size } from '../types';
+import { Velocity } from '../types';
 
 export class Entity {
   x: number;
@@ -20,12 +20,6 @@ export class Entity {
   update(deltaTime: number): void {
     this.x += this.velocity.x * deltaTime;
     this.y += this.velocity.y * deltaTime;
-  }
-
-  draw(ctx: CanvasRenderingContext2D): void {
-    if (!this.visible) {
-      return;
-    }
   }
 
   collidesWith(other: Entity): boolean {

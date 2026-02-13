@@ -419,7 +419,7 @@ Wave 3 (Integration & Polish):
 
 ---
 
-- [ ] 5. Player Tank
+- [x] 5. Player Tank
 
   **What to do**:
   - Create `src/entities/Tank.ts` extending Entity
@@ -492,7 +492,7 @@ Wave 3 (Integration & Polish):
 
 ---
 
-- [ ] 6. Bullet System
+- [x] 6. Bullet System
 
   **What to do**:
   - Create `src/entities/Bullet.ts`
@@ -561,7 +561,7 @@ Wave 3 (Integration & Polish):
 
 ---
 
-- [ ] 7. Map System
+- [x] 7. Map System
 
   **What to do**:
   - Create `src/map.ts` with map data array
@@ -638,7 +638,7 @@ Wave 3 (Integration & Polish):
 
 ---
 
-- [ ] 8. Collision System
+- [x] 8. Collision System
 
   **What to do**:
   - Create `src/systems/Collision.ts`
@@ -717,7 +717,7 @@ Wave 3 (Integration & Polish):
 
 ---
 
-- [ ] 9. Enemy Tank
+- [x] 9. Enemy Tank
 
   **What to do**:
   - Create `src/entities/EnemyTank.ts` extending Tank
@@ -781,7 +781,7 @@ Wave 3 (Integration & Polish):
 
 ---
 
-- [ ] 10. Enemy AI
+- [x] 10. Enemy AI
 
   **What to do**:
   - Create `src/systems/EnemyAI.ts`
@@ -857,7 +857,7 @@ Wave 3 (Integration & Polish):
 
 ---
 
-- [ ] 11. Enemy Spawner
+- [x] 11. Enemy Spawner
 
   **What to do**:
   - Create `src/systems/EnemySpawner.ts`
@@ -943,7 +943,7 @@ Wave 3 (Integration & Polish):
 
 ---
 
-- [ ] 12. Base System
+- [x] 12. Base System
 
   **What to do**:
   - Base is a 32x32 yellow square at position (6*32, 12*32) = (192, 384)
@@ -994,7 +994,7 @@ Wave 3 (Integration & Polish):
 
 ---
 
-- [ ] 13. Game States
+- [x] 13. Game States
 
   **What to do**:
   - Implement state machine: MENU → PLAYING → PAUSED / GAME_OVER / VICTORY
@@ -1093,7 +1093,7 @@ Wave 3 (Integration & Polish):
 
 ---
 
-- [ ] 14. HUD (Heads-Up Display)
+- [x] 14. HUD (Heads-Up Display)
 
   **What to do**:
   - Display lives remaining (top-left): "LIVES: 3"
@@ -1147,7 +1147,7 @@ Wave 3 (Integration & Polish):
 
 ---
 
-- [ ] 15. Game Integration & Final Polish
+- [x] 15. Game Integration & Final Polish
 
   **What to do**:
   - Integrate all systems into main Game class
