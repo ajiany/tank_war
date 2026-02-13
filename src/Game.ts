@@ -6,16 +6,18 @@ import { drawMapGround, drawTreeOverlay, TileTypeEnum } from './map';
 import { TileType } from './map';
 import { Wall } from './entities/Wall';
 import { Base } from './entities/Base';
+import { Entity } from './entities/Entity';
 import { PowerUp } from './entities/PowerUp';
 import { Collision } from './systems/Collision';
 import { EnemySpawner } from './systems/EnemySpawner';
 import { Effects } from './systems/Effects';
+import { BuildMode } from './systems/BuildMode';
 import { LEVELS } from './levels';
 import {
   GAME_WIDTH, GAME_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT, SIDEBAR_WIDTH,
   TILE_SIZE, PLAYER_SPAWN_X, PLAYER_SPAWN_Y, PLAYER_SHOOT_COOLDOWN,
   PLAYER_INVINCIBLE_TIME, PLAYER_LIVES, BULLET_SPEED, COLORS,
-  POWERUP_TYPES, ThemeColors, THEMES,
+  POWERUP_TYPES, ThemeColors, THEMES, BUILD_KILL_REWARDS,
 } from './constants';
 
 type GameState = 'menu' | 'stage_intro' | 'playing' | 'paused' | 'gameover' | 'victory';
@@ -36,6 +38,7 @@ export class Game {
   private powerUps: PowerUp[] = [];
   private enemySpawner!: EnemySpawner;
   private effects!: Effects;
+  private buildMode!: BuildMode;
 
   private gameState: GameState = 'menu';
   private lives = PLAYER_LIVES;
@@ -49,6 +52,7 @@ export class Game {
   private animFrame = 0;
   private playerBulletOnScreen = false;
   private exhaustTimer = 0;
+  private prevBKey = false;
 
   constructor(canvasId: string = 'gameCanvas') {
     this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -152,6 +156,7 @@ export class Game {
     this.enemySpawner.configure(level);
     this.effects = new Effects();
     this.effects.setEnvironment(this.currentTheme.envParticleType, this.currentTheme.envParticle);
+    this.buildMode = new BuildMode();
     this.gameOverScrollY = GAME_HEIGHT;
   }
 
@@ -171,25 +176,54 @@ export class Game {
   }
 
   private updatePlaying(dt: number): void {
-    if (this.input.isPressed('Escape')) {
+    if (this.input.isPressed('Escape') && !this.buildMode.active) {
       this.gameState = 'paused';
       return;
     }
 
-    // Player
-    this.player.update(dt);
-    this.resolveWallCollisions(this.player);
-    this.resolveTerrainEffects(this.player, dt);
+    // Toggle build mode with B (edge-triggered)
+    const bPressed = this.input.isPressed('b') || this.input.isPressed('B');
+    if (bPressed && !this.prevBKey) {
+      this.buildMode.toggle();
+      if (this.buildMode.active) {
+        // Place cursor at player position
+        this.buildMode.cursorRow = Math.floor((this.player.y + 16) / TILE_SIZE);
+        this.buildMode.cursorCol = Math.floor((this.player.x + 16) / TILE_SIZE);
+      }
+    }
+    this.prevBKey = bPressed;
 
-    // Player shooting (1 bullet limit)
-    if (this.shootCooldown > 0) this.shootCooldown -= dt;
-    if ((this.input.isPressed('j') || this.input.isPressed('J') || this.input.isPressed(' '))
-        && this.shootCooldown <= 0 && !this.playerBulletOnScreen) {
-      this.playerShoot();
-      this.shootCooldown = PLAYER_SHOOT_COOLDOWN;
+    // Build mode: player frozen, delegate input to BuildMode
+    if (this.buildMode.active) {
+      this.player.velocity.x = 0;
+      this.player.velocity.y = 0;
+
+      const allEntities = [
+        this.player as Entity,
+        ...this.enemySpawner.getEnemies(),
+      ];
+
+      this.buildMode.update(
+        dt, this.input, this.currentMap, allEntities,
+        (row, col, tile) => this.onBuildPlace(row, col, tile),
+        (row, col) => this.onBuildRemove(row, col),
+      );
+    } else {
+      // Player
+      this.player.update(dt);
+      this.resolveWallCollisions(this.player);
+      this.resolveTerrainEffects(this.player, dt);
+
+      // Player shooting (1 bullet limit)
+      if (this.shootCooldown > 0) this.shootCooldown -= dt;
+      if ((this.input.isPressed('j') || this.input.isPressed('J') || this.input.isPressed(' '))
+          && this.shootCooldown <= 0 && !this.playerBulletOnScreen) {
+        this.playerShoot();
+        this.shootCooldown = PLAYER_SHOOT_COOLDOWN;
+      }
     }
 
-    // Enemies (spawner now returns enemy bullets)
+    // Enemies always active (game doesn't pause in build mode)
     const enemyBullets = this.enemySpawner.update(dt);
     this.bullets.push(...enemyBullets);
 
@@ -235,6 +269,30 @@ export class Game {
     if (this.enemySpawner.isVictory()) {
       this.gameState = 'victory';
     }
+  }
+
+  private onBuildPlace(row: number, col: number, tile: TileType): void {
+    const x = col * TILE_SIZE;
+    const y = row * TILE_SIZE;
+    // Only brick/steel become Wall entities (for collision)
+    if (tile === TileTypeEnum.Brick || tile === TileTypeEnum.Steel) {
+      const wall = new Wall(x, y, tile);
+      wall.theme = this.currentTheme;
+      this.walls.push(wall);
+    }
+    this.effects.addParticles(x + 16, y + 16, '#00cc00');
+  }
+
+  private onBuildRemove(row: number, col: number): boolean {
+    const x = col * TILE_SIZE;
+    const y = row * TILE_SIZE;
+    // Remove wall entity if exists
+    const idx = this.walls.findIndex(w => w.x === x && w.y === y);
+    if (idx !== -1) {
+      this.walls.splice(idx, 1);
+    }
+    this.effects.addParticles(x + 16, y + 16, '#cc0000');
+    return true;
   }
 
   // Check terrain tile under entity center
@@ -329,6 +387,7 @@ export class Game {
               enemy.visible = false;
               this.enemySpawner.removeEnemy(enemy);
               this.score += enemy.scoreValue;
+              this.buildMode.addPoints(BUILD_KILL_REWARDS[enemy.typeName] || 1);
               this.effects.addExplosion(enemy.x + 16, enemy.y + 16, true);
               this.effects.shake();
               if (Math.random() < 0.2) {
@@ -372,6 +431,7 @@ export class Game {
           this.effects.addExplosion(enemy.x + 16, enemy.y + 16, true);
           this.enemySpawner.removeEnemy(enemy);
           this.score += enemy.scoreValue;
+          this.buildMode.addPoints(BUILD_KILL_REWARDS[enemy.typeName] || 1);
         }
         this.effects.shake();
         break;
@@ -439,6 +499,9 @@ export class Game {
     // Environment particles (snow, leaves, dust)
     this.effects.drawEnvironment(ctx);
 
+    // Build mode overlay (grid + cursor)
+    this.buildMode.draw(ctx, this.currentMap, [this.player, ...this.enemySpawner.getEnemies()], this.animFrame, this.currentTheme);
+
     ctx.restore();
 
     // Sidebar
@@ -489,6 +552,17 @@ export class Game {
     ctx.fillText('STAGE', sx + 8, CANVAS_HEIGHT - 30);
     ctx.font = '16px monospace';
     ctx.fillText(String(this.currentLevel + 1), sx + 30, CANVAS_HEIGHT - 10);
+
+    // Build mode sidebar info
+    this.buildMode.drawSidebar(ctx, sx);
+
+    // Always show build points (even outside build mode)
+    if (!this.buildMode.active) {
+      ctx.fillStyle = '#888888';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('BP:' + this.buildMode.points, sx + 8, 200);
+    }
   }
 
   private renderMenu(ctx: CanvasRenderingContext2D): void {
@@ -522,7 +596,7 @@ export class Game {
     ctx.fillStyle = '#666666';
     ctx.font = '10px monospace';
     ctx.fillText('WASD: MOVE  J/SPACE: FIRE', GAME_WIDTH / 2, 370);
-    ctx.fillText('ESC: PAUSE', GAME_WIDTH / 2, 386);
+    ctx.fillText('B: BUILD  ESC: PAUSE', GAME_WIDTH / 2, 386);
   }
 
   private renderStageIntro(ctx: CanvasRenderingContext2D): void {

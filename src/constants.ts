@@ -47,6 +47,26 @@ export const POWERUP_SIZE = 28;
 export const POWERUP_TYPES = ['star', 'bomb', 'shovel', 'tank'] as const;
 export type PowerUpType = typeof POWERUP_TYPES[number];
 
+// Building system
+export const BUILD_INITIAL_POINTS = 10;
+export const BUILD_MATERIALS = {
+  1: { tile: 1 as const, name: 'BRICK', cost: 1, symbol: 'B' },
+  2: { tile: 2 as const, name: 'STEEL', cost: 3, symbol: 'S' },
+  3: { tile: 4 as const, name: 'RIVER', cost: 2, symbol: 'R' },
+  4: { tile: 5 as const, name: 'TREE',  cost: 1, symbol: 'T' },
+  5: { tile: 6 as const, name: 'ICE',   cost: 1, symbol: 'I' },
+} as const;
+
+export type BuildMaterialKey = keyof typeof BUILD_MATERIALS;
+
+export const BUILD_KILL_REWARDS: Record<EnemyTypeName, number> = {
+  normal: 1,
+  fast: 2,
+  armor: 3,
+};
+
+export const BUILD_RECYCLE_RATE = 0.5;
+
 // Colors - Classic NES palette
 export const COLORS = {
   bg: '#000000',
