@@ -223,51 +223,57 @@ export class Game {
       }
     }
 
-    // Enemies always active (game doesn't pause in build mode)
-    const enemyBullets = this.enemySpawner.update(dt);
-    this.bullets.push(...enemyBullets);
+    // Enemies frozen during build mode
+    if (!this.buildMode.active) {
+      const enemyBullets = this.enemySpawner.update(dt);
+      this.bullets.push(...enemyBullets);
 
-    for (const enemy of this.enemySpawner.getEnemies()) {
-      this.resolveWallCollisions(enemy);
-      this.resolveTerrainEffects(enemy, dt);
+      for (const enemy of this.enemySpawner.getEnemies()) {
+        this.resolveWallCollisions(enemy);
+        this.resolveTerrainEffects(enemy, dt);
+      }
     }
 
-    // Bullets + trails
-    for (const bullet of this.bullets) {
-      bullet.update(dt);
-      this.effects.addBulletTrail(bullet.x + 3, bullet.y + 3);
+    // Bullets + trails (only update existing bullets during build mode)
+    if (!this.buildMode.active) {
+      for (const bullet of this.bullets) {
+        bullet.update(dt);
+        this.effects.addBulletTrail(bullet.x + 3, bullet.y + 3);
+      }
+      this.bullets = this.bullets.filter(b => !b.isOutOfBounds());
     }
-    this.bullets = this.bullets.filter(b => !b.isOutOfBounds());
 
     // Tank exhaust
-    this.exhaustTimer += dt;
-    if (this.exhaustTimer > 0.05) {
-      this.exhaustTimer = 0;
-      if (this.player.velocity.x !== 0 || this.player.velocity.y !== 0) {
-        this.effects.addExhaust(this.player.x + 16, this.player.y + 16, '#555555');
-      }
-      for (const enemy of this.enemySpawner.getEnemies()) {
-        if (enemy.velocity.x !== 0 || enemy.velocity.y !== 0) {
-          this.effects.addExhaust(enemy.x + 16, enemy.y + 16, '#444444');
+    if (!this.buildMode.active) {
+      this.exhaustTimer += dt;
+      if (this.exhaustTimer > 0.05) {
+        this.exhaustTimer = 0;
+        if (this.player.velocity.x !== 0 || this.player.velocity.y !== 0) {
+          this.effects.addExhaust(this.player.x + 16, this.player.y + 16, '#555555');
+        }
+        for (const enemy of this.enemySpawner.getEnemies()) {
+          if (enemy.velocity.x !== 0 || enemy.velocity.y !== 0) {
+            this.effects.addExhaust(enemy.x + 16, enemy.y + 16, '#444444');
+          }
         }
       }
     }
 
-    // Power-ups
-    for (const pu of this.powerUps) {
-      pu.update(dt);
-      if (this.player.collidesWith(pu) && pu.visible) {
-        this.collectPowerUp(pu);
+    // Power-ups & collisions (frozen during build mode)
+    if (!this.buildMode.active) {
+      for (const pu of this.powerUps) {
+        pu.update(dt);
+        if (this.player.collidesWith(pu) && pu.visible) {
+          this.collectPowerUp(pu);
+        }
       }
-    }
-    this.powerUps = this.powerUps.filter(p => p.visible);
+      this.powerUps = this.powerUps.filter(p => p.visible);
 
-    // Collisions
-    this.checkBulletCollisions();
+      this.checkBulletCollisions();
 
-    // Victory check
-    if (this.enemySpawner.isVictory()) {
-      this.gameState = 'victory';
+      if (this.enemySpawner.isVictory()) {
+        this.gameState = 'victory';
+      }
     }
   }
 
